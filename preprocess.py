@@ -5,6 +5,14 @@ import operator
 import csv
 import os
 
+def anonymizeID(item_list):
+    new_list=[]
+    for val in item_list:
+        val = val[-4:]
+        new_list.append(val)
+
+    return new_list
+
 def cleanLocation(filename,idx):
     temp_list = []
     with open(filename, 'r') as csvfile:
@@ -126,6 +134,9 @@ def totalTimePlace(user_list,item_list):
 ########read all user info
 filename = "transitions_march_21_0800.csv"
 id_list = pd.read_csv(filename)['clientmac'].tolist()
+id_list = anonymizeID(id_list)
+print(id_list)
+
 transition_list = pd.read_csv(filename)[' # of transitions'].tolist()
 
 places_list = cleanLocation(filename,5)
