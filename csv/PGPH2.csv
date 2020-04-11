@@ -1,4 +1,4 @@
-day, hour, # unique devices, # stay at home, # change level, # local neighbourhood, # campus, # left campus 
+day,hour, # unique devices, # stay at home, # change level, # local neighbourhood, # campus, # left campus 
 8,0,1,1,0,0,0,0
 8,1,1,0,1,0,0,1
 8,2,1,1,0,0,0,1
