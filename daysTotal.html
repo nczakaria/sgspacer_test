@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+<style>
+
+form {
+  position: absolute;
+  left: 20px;
+  top: 10px;
+}
+
+.node {
+  border: solid 2px white;
+  position: absolute;
+}
+
+#tooltip {
+  position: absolute;
+  width: 220px;
+  height: auto;
+  padding: 10px;
+  background-color: white;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+  -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+#tooltip.hidden {
+  display: none;
+}
+
+#tooltip p {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+</style>
+
+<p class=".body">The tree map below shows a breakdown of the days total for each dormitory's mobile-generated feature. </br>
+Use the dropdown displays to chart the mobile use for different days.</p>
+<!-- Initialize a select button -->
+<select id="selectButton">
+  <option value="5" selected="selected">Day 5</option>
+  <option value="6">Day 6</option>
+  <option value="7">Day 7</option>
+  <option value="8">Day 8</option>
+</select>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var e = document.getElementById("selectButton");
+var selDay = e.options[e.selectedIndex].value;
+
+// When the button is changed, run the updateChart function
+d3.select("#selectButton").on("change", function(d) {
+    // recover the option that has been chosen
+    selDay = d3.select(this).property("value")
+    // run the updateChart function with this selected option
+    //d3.exit().remove();
+    updateChart(selDay)
+})
+
+var margin = { top: 40, right: 10, bottom: 10, left: 10 },
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+var value = function(d) { return d["value"]; };
+
+var colorScale = d3.scale.category20();
+var color = function(d) { return d.children ? colorScale(d["dorm"]) : null; }
+
+var treemap = d3.layout.treemap()
+      .size([width, height])
+      .sticky(true)
+      .value(value);
+
+var div = d3.select("body").append("div")
+      .style("position", "relative")
+      .style("width", (width + margin.left + margin.right) + "px")
+      .style("height", (height + margin.top + margin.bottom) + "px")
+      .style("left", margin.left + "px")
+      .style("top", margin.top + "px");
+
+function updateChart(selDay) {
+
+  div.selectAll("*").remove();
+
+  value = function(d) { return d["value"]; };
+  
+  //colorScale = d3.scale.category20c();
+  //color = function(d) { return d.children ? colorScale(d["dorm"]) : null; }
+
+  treemap = d3.layout.treemap()
+      .size([width, height])
+      .sticky(true)
+      .value(value);
+
+  var mousemove = function(d) {
+    var xPosition = d3.event.pageX + 5;
+    var yPosition = d3.event.pageY + 5;
+
+    d3.select("#tooltip")
+      .style("left", xPosition + "px")
+      .style("top", yPosition + "px");
+    d3.select("#tooltip #heading")
+      .text(d["summary"]["dorm"]);
+    d3.select("#tooltip #info")
+      .text(d["summary"]["type"] + "\n" + d["value"]);
+    d3.select("#tooltip").classed("hidden", false);
+  };
+
+  var mouseout = function() {
+    d3.select("#tooltip").classed("hidden", true);
+  };
+
+  var groupData = function(groupings, data, key){
+    data.forEach(function(d){
+      if(!groupings[d["dorm"]]) {
+        groupings[d["dorm"]] = {};
+      }
+      if(!groupings[d["dorm"]][d["type"]]) {
+        groupings[d["dorm"]][d["type"]] = {};
+      }
+      groupings[d["dorm"]][d["type"]][key] = d;
+    });
+  }
+
+  var fname = "https://raw.githubusercontent.com/nczakaria/sgspacer_test/master/csv/"+selDay+"/"+selDay+"_all_sum.csv"
+
+  d3.csv(fname, function(error, data) {
+
+    var groupings = {}
+    groupData(groupings, data, "summary");
+
+    var trees = [];
+    for(group in groupings){
+      var children = [];
+      for(type in groupings[group]){
+        var elm = groupings[group][type];
+        elm["value"] = elm["summary"]["value"];
+        children.push(elm);
+      }
+      trees.push({"children": children,
+                  "dorm": group});
+    }
+    var root = {"children": trees};
+
+    var node = div.datum(root).selectAll(".node")
+        .data(treemap.nodes)
+      .enter().append("div")
+        .attr("class", "node")
+        .call(position)
+        .style("background", color)
+        .on("mousemove", mousemove)
+        .on("mouseout", mouseout);
+
+  });
+
+  function position() {
+    this.style("left", function(d) { return d.x + "px"; })
+        .style("top", function(d) { return d.y + "px"; })
+        .style("width", function(d) { return Math.max(0, d.dx - 2) + "px"; })
+        .style("height", function(d) { return Math.max(0, d.dy - 2) + "px"; });
+  }
+}
+
+updateChart(selDay)
+
+</script>
+
+<div id="tooltip" class="hidden">
+  <p><strong id="heading"></strong></p>
+  <p><span id="info"></span></p>
+</div>
+
+</body>
