@@ -18,18 +18,14 @@
 Use the dropdown displays to chart different properties and days.</p>
 <!-- Initialize a select button -->
 <select id="selectButton">
-  <option value="5" selected="selected">Day 5</option>
-  <option value="6">Day 6</option>
-  <option value="7">Day 7</option>
-  <option value="8">Day 8</option>
+  <option value="11.0" selected="selected">Day 11</option>
+  <option value="12.0">Day 12</option>
+  <option value="13.0">Day 13</option>
 </select>
 <select id="selectType">
-  <option value="uniqueDevices" selected="selected"># Unique Devices</option>
-  <option value="stayHome"># Stay at Home</option>
-  <option value="changeLevel"># Change Level</option>
-  <option value="localNeighborhood"># Local Neighborhood</option>
-  <option value="campus"># on Campus</option>
-  <option value="leftCampus"># Left Campus</option>
+  <option value="unique devices" selected="selected"># Unique Devices</option>
+  <option value="staff"># Staff (>= 30 mins)</option>
+  <option value="visitors"># Visitors (>= 30 mins)</option>
 </select>
 
 
@@ -81,7 +77,8 @@ function updateChart(selectedGroup,selectedType) {
     g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
     
     //var fname = "https://raw.githubusercontent.com/nczakaria/sgspacer_test/master/csv/wide_changeLevel.csv"
-    var fname = "https://raw.githubusercontent.com/nczakaria/sgspacer_test/master/csv/wide_"+selectedType+".csv"
+    var fname = "https://raw.githubusercontent.com/nczakaria/sgspacer_test/master/csv/grouped/wide_"+selectedType+".csv"
+
     // set x scale
     var x = d3.scaleBand()
         .rangeRound([0, width])
@@ -94,7 +91,7 @@ function updateChart(selectedGroup,selectedType) {
 
     // set the colors
     // set the colour scale
-    var z = d3.scaleOrdinal(d3.schemeCategory10);
+    var z = d3.scaleOrdinal(d3.schemeCategory20);
 
     d3.csv(fname, function(d, i, columns) {
       for (i = 1, t = 0; i < columns.length; ++i) t += d[columns[i]] = +d[columns[i]];
@@ -103,81 +100,89 @@ function updateChart(selectedGroup,selectedType) {
     }, function(error, data) {
       if (error) throw error;
 
-      var keys = data.columns.slice(2);
+    //data = getFilteredData(data, selectedGroup);
+    var keys = data.columns.slice(2);
 
-      //data.sort(function(a, b) { return b.total - a.total; });
-      x.domain(data.map(function(d) { return d.hour; }));
-      y.domain([0, d3.max(data, function(d) { return d.total; })]).nice();
-      z.domain(keys);
+    //data.sort(function(a, b) { return b.total - a.total; });
+    x.domain(data.map(function(d) { if(d.day == selectedGroup) {return d.hour;} }));
+    y.domain([0, d3.max(data, function(d) { if(d.day == selectedGroup) { return d.total;} })]).nice();
+    z.domain(keys);
 
-      g.append("g")
-        .selectAll("g")
-        //.data(d3.stack().keys(keys)(data))
-        .data(d3.stack().keys(keys)(data.filter(function(d) { return d.day == selectedGroup; })))
-        .enter().append("g")
-          .attr("fill", function(d) { return z(d.key); })
-        .selectAll("rect")
-        .data(function(d) { return d; })
-        .enter().append("rect")
-          .attr("x", function(d) { return x(d.data.hour); })
-          .attr("y", function(d) { return y(d[1]); })
-          .attr("height", function(d) { return y(d[0]) - y(d[1]); })
-          .attr("width", x.bandwidth())
-        .on("mouseover", function() { tooltip.style("display", null); })
-        .on("mouseout", function() { tooltip.style("display", "none"); })
+    
+    var selectedKey;
+    g.append("g")
+      .selectAll("g")
+      //.data(d3.stack().keys(keys)(data))
+      .data(d3.stack().keys(keys)(data.filter(function(d) { return d.day == selectedGroup; })))
+      .enter().append("g")
+        .attr("fill", function(d) { selectedKey = d.key; return z(d.key); })
         .on("mousemove", function(d) {
-          console.log(d);
-          var xPosition = d3.mouse(this)[0] - 5;
-          var yPosition = d3.mouse(this)[1] - 5;
-          tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-          tooltip.select("text").text(d[1]-d[0]);
-        });
+          selectedKey = d.key;
+        })
+      .selectAll("rect")
+      .data(function(d) { return d; })
+      .enter().append("rect")
+        .attr("x", function(d) { return x(d.data.hour); })
+        .attr("y", function(d) { return y(d[1]); })
+        .attr("height", function(d) { return y(d[0]) - y(d[1]); })
+        .attr("width", x.bandwidth())
+      .on("mouseover", function() { tooltip.style("display", null); })
+      .on("mouseout", function() { tooltip.style("display", "none"); })
+      .on("mousemove", function(d) {
+        var xPosition = d3.mouse(this)[0] - 5;
+        var yPosition = d3.mouse(this)[1] - 5;
+        var testing = selectedKey + ": " + (d[1]-d[0]);
+        //tooltip.html("<p>" + d.key + "</p>");
+        tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+        tooltip.select("text").text(testing);
+      });
 
-      g.append("g")
-          .attr("class", "axis")
-          .attr("transform", "translate(0," + height + ")")
-          .call(d3.axisBottom(x));
-      
-      g.append("g")
-          .attr("class", "axis")
-          .call(d3.axisLeft(y).ticks(null, "s"))
-        .append("text")
-          .attr("x", 2)
-          .attr("y", y(y.ticks().pop()) + 0.5)
-          .attr("dy", "0.32em")
-          .attr("fill", "#000")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "start");    
+      //d[1]-d[0]
+    g.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+    
+    g.append("g")
+        .attr("class", "axis")
+        .call(d3.axisLeft(y).ticks(null, "s"))
+      .append("text")
+        .attr("x", 2)
+        .attr("y", y(y.ticks().pop()) + 0.5)
+        .attr("dy", "0.32em")
+        .attr("fill", "#000")
+        .attr("font-weight", "bold")
+        .attr("text-anchor", "start");    
 
-      // Add X axis label:
-      svg.append("text")
-          .attr("font-family", "sans-serif")
-          .attr("font-size", 10)
-          .attr("text-anchor", "middle")
-          .attr("transform","translate(" + (width/2) + " ," + (height + margin.top + 25) + ")")
-    .style("text-anchor", "middle")
-          .text("Hour of the day");
+    // Add X axis label:
+    svg.append("text")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .attr("text-anchor", "middle")
+        .attr("transform","translate(" + (width/2) + " ," + (height + margin.top + 25) + ")")
+  .style("text-anchor", "middle")
+        .text("Hour of the day");
 
-      var legend = g.append("g")
-          .attr("font-family", "sans-serif")
-          .attr("font-size", 10)
-          .attr("text-anchor", "end")
-        .selectAll("g")
-        .data(keys.slice().reverse())
-        .enter().append("g")
-          .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+    var legend = g.append("g")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .attr("text-anchor", "end")
+      .selectAll("g")
+      .data(keys.slice().reverse())
+      .enter().append("g")
+        .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
-      legend.append("rect")
-          .attr("x", 70)
-          .attr("width", 19)
-          .attr("height", 19)
-          .attr("fill", z);
+    legend.append("rect")
+        .attr("x", 910)
+        .attr("width", 19)
+        .attr("height", 19)
+        .attr("fill", z);
 
-      legend.append("text")
-          .attr("x", 60)
-          .attr("y", 9.5)
-          .attr("dy", "0.32em")
-          .text(function(d) { return d; });
+    legend.append("text")
+        .attr("x", 900)
+        .attr("y", 9.5)
+        .attr("dy", "0.32em")
+        .text(function(d) { return d; });
 
     });
 
