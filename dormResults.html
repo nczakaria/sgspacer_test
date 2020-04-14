@@ -14,9 +14,15 @@
 </style>
 
 <body> 
-<p class=".body">The stacked chart below shows (by default) the number of unique devies located at different student dormitories over a day.</br>
-Use the dropdown displays to chart different properties and days.</p>
+<p class=".body">The stacked chart below shows (by default) the hourly trend of the number of unique devies located at different student dormitories each day.</br>
+Use the dropdown displays to chart different combinations.</p>
 <!-- Initialize a select button -->
+<select id="selectArea">
+  <option value="All" selected="selected">All Dorms</option>
+  <option value="UT">U-Town</option>
+  <option value="Area2">Area #2</option>
+  <option value="Area3">Area #3</option>
+</select>
 <select id="selectButton">
   <option value="11.0" selected="selected">Day 11</option>
   <option value="12.0">Day 12</option>
@@ -27,7 +33,6 @@ Use the dropdown displays to chart different properties and days.</p>
   <option value="staff"># Staff (>= 30 mins)</option>
   <option value="visitors"># Visitors (>= 30 mins)</option>
 </select>
-
 
 <div id="main">
   <svg width="960" height="500"></svg>
@@ -49,6 +54,9 @@ var selDay = e.options[e.selectedIndex].value;
 e = document.getElementById("selectType");
 var selType = e.options[e.selectedIndex].value;
 
+e = document.getElementById("selectArea");
+var selArea = e.options[e.selectedIndex].value;
+
 d3.select("#selectButton")
   .selectAll('myOptions')
   //.data(keys)
@@ -65,8 +73,25 @@ d3.select("#selectType")
   .text(function (d) { return d; }) // text showed in the menu
   .attr("value", function (d) { return d; }) // corresponding value returned by the button
 
+d3.select("#selectArea")
+  .selectAll('myOptions')
+  //.data(keys2)
+  .enter()
+  .append('option')
+  .text(function (d) { return d; }) // text showed in the menu
+  .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+function calculateTotal(d,i,columns) {
+  for (i = 1, t = 0; i < columns.length; ++i) 
+  {
+    t += d[columns[i]] = +d[columns[i]];
+  }
+  d.total = t;
+  return d;
+}
+
 // function that wraps around the d3 pattern (bind, add, update, remove)
-function updateChart(selectedGroup,selectedType) {
+function updateChart(selectedGroup,selectedType,selectedArea) {
 
     svg.selectAll("*").remove();
 
@@ -93,22 +118,40 @@ function updateChart(selectedGroup,selectedType) {
     // set the colour scale
     var z = d3.scaleOrdinal(d3.schemeCategory20);
 
+    var keys;
+    var y_total;
+    var newCol;
     d3.csv(fname, function(d, i, columns) {
-      for (i = 1, t = 0; i < columns.length; ++i) t += d[columns[i]] = +d[columns[i]];
-      d.total = t;
+      d = calculateTotal(d,i,columns);
+      y_total = d.total;
       return d;
     }, function(error, data) {
       if (error) throw error;
 
     //data = getFilteredData(data, selectedGroup);
-    var keys = data.columns.slice(2);
+    keys = data.columns.slice(2);
+    //alert("old total:" + y_total);
+    if(selectedArea == "UT"){ keys = ["UT_T","UT_K","UT_GRS","UT_GRN","UT_C","UT_A"]; }
+    if(selectedArea == "Area2"){ keys = ["TMH","SH","RVR","RH","PGP"]; }
+    if(selectedArea == "Area3"){ keys = ["KR","KFH","KE7","EH","BLK20_GE1","BLK13_GE1"]; }
 
     //data.sort(function(a, b) { return b.total - a.total; });
     x.domain(data.map(function(d) { if(d.day == selectedGroup) {return d.hour;} }));
-    y.domain([0, d3.max(data, function(d) { if(d.day == selectedGroup) { return d.total;} })]).nice();
+    y.domain([0, d3.max(data, function(d) { 
+        if(d.day == selectedGroup) { 
+          if(selectedArea != "All")
+          {
+            newCol = ["day","hour"];
+            for (i = 0; i < keys.length; i++) { 
+              newCol.push(keys[i]);
+            } 
+            d = calculateTotal(d,0,newCol);
+          }
+          return d.total;
+        } 
+      })]).nice();
     z.domain(keys);
 
-    
     var selectedKey;
     g.append("g")
       .selectAll("g")
@@ -211,7 +254,7 @@ d3.select("#selectButton").on("change", function(d) {
     selDay = d3.select(this).property("value")
     // run the updateChart function with this selected option
     //d3.exit().remove();
-    updateChart(selDay,selType)
+    updateChart(selDay,selType,selArea)
 })
 
 // When the button is changed, run the updateChart function
@@ -220,9 +263,18 @@ d3.select("#selectType").on("change", function(d) {
     selType = d3.select(this).property("value")
     // run the updateChart function with this selected option
     //d3.exit().remove();
-    updateChart(selDay,selType)
+    updateChart(selDay,selType,selArea)
 })
 
-updateChart(selDay,selType)
+// When the button is changed, run the updateChart function
+d3.select("#selectArea").on("change", function(d) {
+    // recover the option that has been chosen
+    selArea = d3.select(this).property("value")
+    // run the updateChart function with this selected option
+    //d3.exit().remove();
+    updateChart(selDay,selType,selArea)
+})
+
+updateChart(selDay,selType,selArea)
 
 </script>
